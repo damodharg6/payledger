@@ -1,0 +1,81 @@
+/*
+ * PayLedger design tokens: the single source of truth for colour, type scale, radii, spacing,
+ * shadows, widths and breakpoints. Tailwind v4 turns each token into utilities
+ * (bg-mist, text-hero, rounded-card, py-section, max-w-copy, md:…).
+ *
+ * Author: Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
+ */
+@theme {
+  /* Breakpoints (mobile first): base ≤734 · md 735–1068 · lg 1069–1440 · xl ≥1441 */
+  --breakpoint-*: initial;
+  --breakpoint-md: 735px;
+  --breakpoint-lg: 1069px;
+  --breakpoint-xl: 1441px;
+
+  /* Colour: neutrals, one accent, and status colours used only for SUCCEEDED / FAILED */
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+  --color-ink: #1d1d1f;          /* primary text */
+  --color-ink-2: #6e6e73;        /* secondary text, 4.6:1 on #f5f5f7 */
+  --color-mist: #f5f5f7;         /* alternate section background */
+  --color-hairline: #d2d2d7;     /* thin borders on light backgrounds */
+  --color-accent: #2d6bff;       /* links and buttons only */
+  --color-accent-hover: #1f5ae6;
+  --color-success: #1e9e62;      /* SUCCEEDED only */
+  --color-danger: #d93025;       /* FAILED only */
+  --color-night-2: #a1a1a6;      /* secondary text on black, 8:1 */
+  --color-night-line: #2c2c2e;   /* hairlines on black */
+  --color-code: #1d1d1f;         /* code panel background */
+  --color-code-text: #e8e8ed;
+  --color-code-dim: #98989d;
+  --color-code-accent: #9dbbff;  /* strings and numbers in code: a tint of the accent */
+
+  /* Type */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --text-hero: clamp(2.75rem, 1.25rem + 5.6vw, 6rem);          /* 44 → 96px */
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.03em;
+  --text-hero--font-weight: 600;
+  --text-headline: clamp(2.25rem, 1.25rem + 3.6vw, 4.5rem);    /* 36 → 72px */
+  --text-headline--line-height: 1.05;
+  --text-headline--letter-spacing: -0.025em;
+  --text-headline--font-weight: 600;
+  --text-title: clamp(1.5rem, 1.25rem + 0.8vw, 2rem);          /* 24 → 32px */
+  --text-title--line-height: 1.15;
+  --text-title--letter-spacing: -0.015em;
+  --text-title--font-weight: 600;
+  --text-lead: clamp(1.1875rem, 1.05rem + 0.45vw, 1.3125rem);  /* 19 → 21px */
+  --text-lead--line-height: 1.5;
+  --text-lead--letter-spacing: -0.005em;
+  --text-body: 1.0625rem;                                      /* 17px */
+  --text-body--line-height: 1.5;
+  --text-small: 0.875rem;                                      /* 14px */
+  --text-small--line-height: 1.45;
+  --text-micro: 0.75rem;                                       /* 12px */
+  --text-micro--line-height: 1.4;
+
+  /* Radii */
+  --radius-card: 28px;
+  --radius-tile: 24px;
+  --radius-control: 12px;
+  --radius-pill: 980px;
+
+  /* Spacing (Tailwind's 4px base stays; these are the named layout steps) */
+  --spacing-section: clamp(5rem, 2.5rem + 7vw, 10rem);  /* 80 → 160px vertical rhythm */
+  --spacing-gutter: clamp(1.25rem, 0.5rem + 2.5vw, 2.5rem);
+  --spacing-nav: 3rem;                                  /* 48px sticky bar */
+
+  /* Widths */
+  --container-copy: 61.25rem;  /* 980px centred copy */
+  --container-grid: 75rem;     /* 1200px grids */
+
+  /* Depth */
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.04), 0 12px 32px -12px rgb(0 0 0 / 0.14);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 0.03), 0 6px 20px -10px rgb(0 0 0 / 0.10);
+
+  /* Motion */
+  --ease-apple: cubic-bezier(0.22, 1, 0.36, 1);
+}
