@@ -29,6 +29,13 @@ management:
         include: health,info,metrics
 
 payledger:
+  jwt:
+    # Base64, >= 32 bytes. Local default only: always set JWT_SECRET anywhere shared.
+    secret: ${JWT_SECRET:bG9jYWwtZGV2LW9ubHktcGF5bGVkZ2VyLWp3dC1zZWNyZXQtY2hhbmdlLW1l}
+    issuer: payledger
+    ttl: 1h
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
   scheduling:
     enabled: true
   idempotency:
@@ -51,3 +58,10 @@ payledger:
     timeout: 2s              # PayLedger stops waiting after this and sends a status inquiry
     slow-response-delay: 3s  # how late a "timeout" charge answers
     inquiry-pending-rate: 0.10
+
+springdoc:                   # Swagger UI at /swagger-ui.html, OpenAPI JSON at /v3/api-docs
+  api-docs:
+    enabled: ${SWAGGER_ENABLED:true}
+  swagger-ui:
+    enabled: ${SWAGGER_ENABLED:true}
+    operations-sorter: method

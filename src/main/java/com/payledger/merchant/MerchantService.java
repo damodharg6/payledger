@@ -6,6 +6,7 @@ import com.payledger.ledger.LedgerAccountService;
 import java.time.Clock;
 import java.util.Locale;
 import java.util.UUID;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,19 +19,25 @@ import org.springframework.transaction.annotation.Transactional;
 public class MerchantService {
 
     private final MerchantRepository merchants;
+    private final DashboardUserRepository dashboardUsers;
     private final LedgerAccountService ledgerAccounts;
     private final ApiKeys apiKeys;
+    private final PasswordEncoder passwords;
     private final Clock clock;
 
-    public MerchantService(MerchantRepository merchants, LedgerAccountService ledgerAccounts, ApiKeys apiKeys, Clock clock) {
+    public MerchantService(MerchantRepository merchants, DashboardUserRepository dashboardUsers,
+                           LedgerAccountService ledgerAccounts, ApiKeys apiKeys, PasswordEncoder passwords, Clock clock) {
         this.merchants = merchants;
+        this.dashboardUsers = dashboardUsers;
         this.ledgerAccounts = ledgerAccounts;
         this.apiKeys = apiKeys;
+        this.passwords = passwords;
         this.clock = clock;
     }
 
     /**
-     * Creates the merchant and its ledger account in one database transaction, and returns the
+     * Creates the merchant, its ledger account and (optionally) its first dashboard login in one
+     * database transaction, and returns the
      * plain API key exactly once. The quick {@code existsByEmail} check gives a clear error; the
      * UNIQUE constraint on email still protects against two registrations racing each other.
      */
@@ -46,6 +53,10 @@ public class MerchantService {
         merchants.saveAndFlush(merchant);
 
         LedgerAccount account = ledgerAccounts.openMerchantAccount(merchant.getId(), merchant.getName());
+        if (request.dashboardPassword() != null) {
+            dashboardUsers.save(new DashboardUser(UUID.randomUUID(), merchant.getId(), email,
+                    passwords.encode(request.dashboardPassword()), DashboardUser.Role.ADMIN, clock.instant()));
+        }
         return new RegisterMerchantResponse(merchant.getId(), merchant.getName(), merchant.getEmail(),
                 apiKey, account.getId(), merchant.getCreatedAt());
     }

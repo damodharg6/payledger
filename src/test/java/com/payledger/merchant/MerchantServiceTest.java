@@ -24,6 +24,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 /**
  * Unit tests for {@link MerchantService} with mocked repositories.
@@ -44,11 +45,17 @@ class MerchantServiceTest {
     @Mock
     ApiKeys apiKeys;
 
+    @Mock
+    DashboardUserRepository dashboardUsers;
+
+    @Mock
+    PasswordEncoder passwords;
+
     MerchantService service;
 
     @BeforeEach
     void setUp() {
-        service = new MerchantService(merchants, ledgerAccounts, apiKeys, Clock.fixed(NOW, ZoneOffset.UTC));
+        service = new MerchantService(merchants, dashboardUsers, ledgerAccounts, apiKeys, passwords, Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
     @Test
@@ -73,6 +80,23 @@ class MerchantServiceTest {
         assertThat(response.apiKey()).isEqualTo("plk_secret");
         assertThat(response.merchantId()).isEqualTo(m.getId());
         assertThat(response.ledgerAccountId()).isNotNull();
+        verify(dashboardUsers, never()).save(any());
+    }
+
+    @Test
+    void dashboardPasswordCreatesAdminLoginWithBcryptHashOnly() {
+        when(apiKeys.generate()).thenReturn("plk_secret");
+        when(passwords.encode("correct horse battery")).thenReturn("$2a$10$hash");
+        when(ledgerAccounts.openMerchantAccount(any(), anyString())).thenAnswer(inv ->
+                new LedgerAccount(UUID.randomUUID(), OwnerType.MERCHANT, inv.getArgument(0).toString(), "x", "INR", NOW));
+
+        service.register(new RegisterMerchantRequest("Shop", "Owner@Shop.in", null, "correct horse battery"));
+
+        ArgumentCaptor<DashboardUser> user = ArgumentCaptor.forClass(DashboardUser.class);
+        verify(dashboardUsers).save(user.capture());
+        assertThat(user.getValue().getEmail()).isEqualTo("owner@shop.in");
+        assertThat(user.getValue().getPasswordHash()).isEqualTo("$2a$10$hash");
+        assertThat(user.getValue().getRole()).isEqualTo(DashboardUser.Role.ADMIN);
     }
 
     @Test

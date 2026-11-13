@@ -2,6 +2,7 @@ package com.payledger.common;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.MethodParameter;
@@ -11,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.method.ParameterErrors;
 import org.springframework.validation.method.ParameterValidationResult;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -22,9 +24,16 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 /**
- * One place that turns exceptions into RFC 7807 {@link ProblemDetail} JSON responses.
+ * One place that turns exceptions into RFC 7807 {@link ProblemDetail} JSON responses
+ * ({@code application/problem+json} with type, title, status, detail).
  * Extending {@link ResponseEntityExceptionHandler} gives correct answers for Spring MVC's own
- * errors (bad JSON, wrong method, missing header) for free.
+ * errors (bad JSON, wrong method, unknown URL, bad path variable, missing header) for free.
+ * <pre>
+ *   400 validation / bad input      401 not authenticated / bad login
+ *   403 not allowed (security)      404 not found (or not yours)
+ *   409 conflict / in progress      422 idempotency key reused, refund too large
+ *   500 unexpected (no internals leaked, errorId logged)
+ * </pre>
  *
  * @author Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
  */
@@ -51,6 +60,26 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     @ExceptionHandler(BadRequestException.class)
     public ProblemDetail handleBadRequest(BadRequestException ex) {
         return problem(HttpStatus.BAD_REQUEST, "Bad request", ex.getMessage());
+    }
+
+    /** Failed dashboard login. One generic message for every reason, so nothing is revealed. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        return problem(HttpStatus.UNAUTHORIZED, "Unauthorized", "Invalid email or password");
+    }
+
+    /**
+     * Anything unexpected: a 500 with no internals (no stack trace, SQL or class names) and an
+     * {@code errorId} that also appears in the log, so support can find the real cause.
+     */
+    @ExceptionHandler(Exception.class)
+    public ProblemDetail handleUnexpected(Exception ex) {
+        String errorId = UUID.randomUUID().toString();
+        log.error("Unhandled error {}", errorId, ex);
+        ProblemDetail pd = problem(HttpStatus.INTERNAL_SERVER_ERROR, "Internal error",
+                "Something went wrong on our side. Quote errorId " + errorId + " if you contact support.");
+        pd.setProperty("errorId", errorId);
+        return pd;
     }
 
     /** A database constraint caught a race that the service-level checks could not see. */
