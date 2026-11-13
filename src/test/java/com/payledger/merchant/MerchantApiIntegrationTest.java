@@ -16,7 +16,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
-import org.springframework.test.web.servlet.MockMvc;
 
 /**
  * End-to-end tests of merchant registration and API key authentication over HTTP, against a
@@ -25,9 +24,6 @@ import org.springframework.test.web.servlet.MockMvc;
  * @author Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
  */
 class MerchantApiIntegrationTest extends AbstractIntegrationTest {
-
-    @Autowired
-    MockMvc mvc;
 
     @Autowired
     MerchantRepository merchants;

@@ -45,8 +45,15 @@ public class IdempotencyKey extends AssignedIdEntity<IdempotencyKeyId> {
     }
 
     public IdempotencyKey(IdempotencyKeyId id, String requestHash, Instant createdAt) {
+        this(id, requestHash, null, null, createdAt);
+    }
+
+    /** Full constructor, for tests that need a completed key. */
+    IdempotencyKey(IdempotencyKeyId id, String requestHash, UUID paymentId, Integer responseCode, Instant createdAt) {
         this.id = id;
         this.requestHash = requestHash;
+        this.paymentId = paymentId;
+        this.responseCode = responseCode;
         this.createdAt = createdAt;
     }
 
