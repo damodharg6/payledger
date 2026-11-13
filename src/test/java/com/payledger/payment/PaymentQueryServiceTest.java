@@ -37,6 +37,9 @@ class PaymentQueryServiceTest {
     @Mock
     PaymentRepository payments;
 
+    @Mock
+    RefundRepository refunds;
+
     @InjectMocks
     PaymentQueryService service;
 

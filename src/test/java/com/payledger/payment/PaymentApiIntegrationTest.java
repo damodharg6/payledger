@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * End-to-end tests of the payment API over HTTP against a real PostgreSQL: creation, idempotent
@@ -39,13 +38,10 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     JdbcTemplate jdbc;
 
-    @Autowired
-    TransactionTemplate tx;
-
     @Test
     void createReturns201WithTimeline() throws Exception {
         TestMerchant m = newMerchant();
-        createPayment(m, "key-1", 50_075, "cust-1")
+        postPayment(m, "key-1", 50_075, "cust-1")
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", startsWith("/api/v1/payments/")))
                 .andExpect(header().doesNotExist(PaymentController.REPLAYED))
@@ -58,10 +54,10 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void sameKeySameBodyReplaysTheSamePayment() throws Exception {
         TestMerchant m = newMerchant();
-        String first = createPayment(m, "retry-me", 10_000, "cust-1")
+        String first = postPayment(m, "retry-me", 10_000, "cust-1")
                 .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString();
 
-        String second = createPayment(m, "retry-me", 10_000, "cust-1")
+        String second = postPayment(m, "retry-me", 10_000, "cust-1")
                 .andExpect(status().isCreated())
                 .andExpect(header().string(PaymentController.REPLAYED, "true"))
                 .andReturn().getResponse().getContentAsString();
@@ -73,9 +69,9 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void sameKeyDifferentBodyIs422() throws Exception {
         TestMerchant m = newMerchant();
-        createPayment(m, "k", 10_000, "cust-1").andExpect(status().isCreated());
+        postPayment(m, "k", 10_000, "cust-1").andExpect(status().isCreated());
 
-        createPayment(m, "k", 99_999, "cust-1")
+        postPayment(m, "k", 99_999, "cust-1")
                 .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.detail").value(containsString("different request body")));
         assertThat(countPayments(m)).isEqualTo(1);
@@ -88,7 +84,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
         String hash = IdempotencyService.requestHash(new CreatePaymentRequest(10_000L, null, "cust-1"));
         tx.executeWithoutResult(s -> keys.insertIfAbsent(m.id(), "busy", hash, Instant.now()));
 
-        createPayment(m, "busy", 10_000, "cust-1")
+        postPayment(m, "busy", 10_000, "cust-1")
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value(containsString("still in progress")));
         assertThat(countPayments(m)).isZero();
@@ -98,9 +94,9 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     void sameKeyIsIndependentPerMerchant() throws Exception {
         TestMerchant a = newMerchant();
         TestMerchant b = newMerchant();
-        createPayment(a, "shared-key", 100, "c").andExpect(status().isCreated())
+        postPayment(a, "shared-key", 100, "c").andExpect(status().isCreated())
                 .andExpect(header().doesNotExist(PaymentController.REPLAYED));
-        createPayment(b, "shared-key", 100, "c").andExpect(status().isCreated())
+        postPayment(b, "shared-key", 100, "c").andExpect(status().isCreated())
                 .andExpect(header().doesNotExist(PaymentController.REPLAYED));
     }
 
@@ -136,7 +132,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.errors.currency").exists())
                 .andExpect(jsonPath("$.errors.customerRef").exists());
         // Validation runs before the key is claimed, so the same key still works afterwards.
-        createPayment(m, "k", 100, "c").andExpect(status().isCreated())
+        postPayment(m, "k", 100, "c").andExpect(status().isCreated())
                 .andExpect(header().doesNotExist(PaymentController.REPLAYED));
     }
 
@@ -151,7 +147,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     void merchantCannotSeeAnotherMerchantsPayment() throws Exception {
         TestMerchant owner = newMerchant();
         TestMerchant other = newMerchant();
-        String id = JsonPath.read(createPayment(owner, "k", 100, "c").andReturn().getResponse().getContentAsString(), "$.id");
+        String id = JsonPath.read(postPayment(owner, "k", 100, "c").andReturn().getResponse().getContentAsString(), "$.id");
 
         mvc.perform(get("/api/v1/payments/" + id).header(ApiKeyAuthenticationFilter.HEADER, owner.apiKey()))
                 .andExpect(status().isOk())
@@ -164,7 +160,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     void listFiltersByStatusAndDateAndPaginates() throws Exception {
         TestMerchant m = newMerchant();
         for (int i = 0; i < 3; i++) {
-            createPayment(m, "list-" + i, 100 + i, "c").andExpect(status().isCreated());
+            postPayment(m, "list-" + i, 100 + i, "c").andExpect(status().isCreated());
         }
         // Move one payment to PROCESSING through the state machine, so the status filter has something to find.
         UUID first = jdbc.queryForObject("SELECT id FROM payments WHERE merchant_id = ? LIMIT 1", UUID.class, m.id());
@@ -194,7 +190,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void statusTimelineIsPersisted() throws Exception {
         TestMerchant m = newMerchant();
-        String id = JsonPath.read(createPayment(m, "t", 100, "c").andReturn().getResponse().getContentAsString(), "$.id");
+        String id = JsonPath.read(postPayment(m, "t", 100, "c").andReturn().getResponse().getContentAsString(), "$.id");
         tx.executeWithoutResult(s -> payments.findById(UUID.fromString(id)).orElseThrow().startProcessing(Instant.now()));
 
         mvc.perform(get("/api/v1/payments/" + id).header(ApiKeyAuthenticationFilter.HEADER, m.apiKey()))
@@ -204,7 +200,7 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.timeline[1].to").value("PROCESSING"));
     }
 
-    private ResultActions createPayment(TestMerchant m, String key, long amountPaise, String customerRef) throws Exception {
+    private ResultActions postPayment(TestMerchant m, String key, long amountPaise, String customerRef) throws Exception {
         return mvc.perform(post("/api/v1/payments")
                 .header(ApiKeyAuthenticationFilter.HEADER, m.apiKey())
                 .header(PaymentController.IDEMPOTENCY_KEY, key)

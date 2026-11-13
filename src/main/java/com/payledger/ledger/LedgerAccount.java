@@ -16,6 +16,10 @@ import org.hibernate.type.SqlTypes;
 /**
  * A bucket that money moves in and out of. {@code balancePaise} is a cache for fast reads;
  * the source of truth is always the sum of this account's {@link LedgerEntry} rows.
+ * <p>
+ * Sign convention: balance = credits − debits. A customer who paid ₹500 is at −50000 paise, the
+ * merchant who received it is at +50000. Because every transaction is balanced, the balances of
+ * all accounts together always add up to exactly zero.
  *
  * @author Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
  */
@@ -30,7 +34,7 @@ public class LedgerAccount extends AssignedIdEntity<UUID> {
     @Column(name = "owner_type", nullable = false, length = 20, updatable = false)
     private OwnerType ownerType;
 
-    @Column(name = "owner_ref", nullable = false, length = 100, updatable = false)
+    @Column(name = "owner_ref", nullable = false, length = 200, updatable = false)
     private String ownerRef;
 
     @Column(nullable = false, length = 120)
@@ -61,6 +65,17 @@ public class LedgerAccount extends AssignedIdEntity<UUID> {
         this.name = name;
         this.currency = currency;
         this.createdAt = createdAt;
+    }
+
+    /**
+     * Updates the cached balance. Only {@link LedgerService} calls this, while it holds a
+     * {@code SELECT ... FOR UPDATE} lock on this row. {@code addExact} throws instead of silently
+     * wrapping around on overflow.
+     */
+    void apply(EntryDirection direction, long amountPaise) {
+        balancePaise = direction == EntryDirection.CREDIT
+                ? Math.addExact(balancePaise, amountPaise)
+                : Math.subtractExact(balancePaise, amountPaise);
     }
 
     @Override

@@ -77,7 +77,7 @@ class PaymentServiceTest {
     void sameKeyReturnsStoredPaymentWithoutCreatingAnother() {
         UUID existing = UUID.randomUUID();
         PaymentResponse stored = new PaymentResponse(existing, MERCHANT, 50_000L, "INR", PaymentStatus.CREATED,
-                "cust-1", null, null, null, NOW, NOW, List.of());
+                "cust-1", null, null, null, NOW, NOW, 0L, List.of());
         when(idempotency.claim(eq(MERCHANT), eq("k1"), anyString())).thenReturn(IdempotencyService.Claim.replayOf(existing, 201));
         when(queries.get(MERCHANT, existing)).thenReturn(stored);
 

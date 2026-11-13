@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Full view of one payment, including its status timeline.
+ * Full view of one payment, including its status timeline and the total refunded so far.
  *
  * @author Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
  */
@@ -21,6 +21,7 @@ public record PaymentResponse(
         Instant reverseBy,
         Instant createdAt,
         Instant updatedAt,
+        long refundedPaise,
         List<TimelineEntry> timeline) {
 
     /**
@@ -31,13 +32,18 @@ public record PaymentResponse(
     public record TimelineEntry(PaymentStatus from, PaymentStatus to, String reason, Instant at) {
     }
 
-    /** Must be called inside a transaction: the timeline is loaded lazily. */
+    /** For a payment with no refunds. Must be called inside a transaction (lazy timeline). */
     public static PaymentResponse from(Payment p) {
+        return from(p, 0L);
+    }
+
+    /** Must be called inside a transaction: the timeline is loaded lazily. */
+    public static PaymentResponse from(Payment p, long refundedPaise) {
         List<TimelineEntry> timeline = p.getHistory().stream()
                 .map(h -> new TimelineEntry(h.getFromStatus(), h.getToStatus(), h.getReason(), h.getChangedAt()))
                 .toList();
         return new PaymentResponse(p.getId(), p.getMerchantId(), p.getAmountPaise(), p.getCurrency(), p.getStatus(),
                 p.getCustomerRef(), p.getBankReference(), p.getFailureReason(), p.getReverseBy(),
-                p.getCreatedAt(), p.getUpdatedAt(), timeline);
+                p.getCreatedAt(), p.getUpdatedAt(), refundedPaise, timeline);
     }
 }

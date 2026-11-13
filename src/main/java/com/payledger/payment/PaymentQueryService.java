@@ -26,16 +26,18 @@ public class PaymentQueryService {
     public static final int MAX_PAGE_SIZE = 100;
 
     private final PaymentRepository payments;
+    private final RefundRepository refunds;
 
-    public PaymentQueryService(PaymentRepository payments) {
+    public PaymentQueryService(PaymentRepository payments, RefundRepository refunds) {
         this.payments = payments;
+        this.refunds = refunds;
     }
 
     /** Returns 404 (not 403) for another merchant's payment, so ids of other merchants leak nothing. */
     @Transactional(readOnly = true)
     public PaymentResponse get(UUID merchantId, UUID paymentId) {
         return payments.findByIdAndMerchantId(paymentId, merchantId)
-                .map(PaymentResponse::from)
+                .map(p -> PaymentResponse.from(p, refunds.sumAmountByPaymentId(p.getId())))
                 .orElseThrow(() -> new NotFoundException("Payment " + paymentId + " not found"));
     }
 

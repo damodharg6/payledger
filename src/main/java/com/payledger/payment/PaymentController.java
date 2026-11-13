@@ -34,10 +34,12 @@ public class PaymentController {
 
     private final PaymentService paymentService;
     private final PaymentQueryService queries;
+    private final RefundService refundService;
 
-    public PaymentController(PaymentService paymentService, PaymentQueryService queries) {
+    public PaymentController(PaymentService paymentService, PaymentQueryService queries, RefundService refundService) {
         this.paymentService = paymentService;
         this.queries = queries;
+        this.refundService = refundService;
     }
 
     /**
@@ -73,5 +75,20 @@ public class PaymentController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return queries.list(merchant.merchantId(), status, from, to, page, size);
+    }
+
+    /** Full or partial refund of a SUCCEEDED payment. Also needs an Idempotency-Key. */
+    @PostMapping("/{id}/refunds")
+    public ResponseEntity<RefundResponse> refund(
+            @AuthenticationPrincipal AuthenticatedMerchant merchant,
+            @PathVariable UUID id,
+            @RequestHeader(IDEMPOTENCY_KEY) @NotBlank @Size(max = 100) String idempotencyKey,
+            @Valid @RequestBody CreateRefundRequest request) {
+        RefundResult result = refundService.refund(merchant.merchantId(), id, idempotencyKey.trim(), request);
+        var response = ResponseEntity.status(201);
+        if (result.replayed()) {
+            response.header(REPLAYED, "true");
+        }
+        return response.body(result.refund());
     }
 }
