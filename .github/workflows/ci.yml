@@ -1,0 +1,80 @@
+# PayLedger CI: every push and pull request builds and tests everything.
+# Author: Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (Java 21, Testcontainers)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+      # Unit + integration tests against a real PostgreSQL 16 (Docker is preinstalled on the runner),
+      # JaCoCo report and coverage gate.
+      - name: Build and test
+        run: ./mvnw -B verify | tee build.log   # GitHub runs bash with pipefail, so failures still fail
+      - name: Proof numbers and coverage in the job summary
+        if: always()
+        run: |
+          {
+            echo "## PayLedger proof tests"
+            echo '```'
+            grep -E '^PROOF|^  (bank|after|inquiry|refunds|final|trial)' build.log || echo "no proof output found"
+            echo '```'
+            if [ -f target/site/jacoco/jacoco.csv ]; then
+              awk -F, 'NR>1 {c+=$9; m+=$8} END {printf "**Line coverage:** %.1f%% (%d/%d lines)\n", 100*c/(c+m), c, c+m}' target/site/jacoco/jacoco.csv
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload test and coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-reports
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+          retention-days: 14
+
+  dashboard:
+    name: Dashboard (React + TypeScript)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: dashboard
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: dashboard/package-lock.json
+      - run: npm ci --no-fund --no-audit
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    name: Docker images
+    needs: [backend, dashboard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build API and dashboard images
+        run: docker compose build

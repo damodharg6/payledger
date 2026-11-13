@@ -7,3 +7,4 @@ target/
 seed-demo.key
 node_modules/
 .claude/launch.json
+build.log

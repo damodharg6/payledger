@@ -1,0 +1,13 @@
+# Keep the build context small and secrets out of images.
+target/
+dashboard/
+scripts/
+.git/
+.github/
+.idea/
+.claude/
+*.iml
+*.log
+.env
+seed-demo.key
+README.pdf

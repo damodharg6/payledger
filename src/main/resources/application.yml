@@ -20,7 +20,9 @@ spring:
       enabled: true        # Java 21 virtual threads for request handling
 
 server:
-  port: 8080
+  port: ${PORT:8080}             # cloud hosts like Render pass the port in $PORT
+  shutdown: graceful
+  forward-headers-strategy: framework
 
 management:
   endpoints:

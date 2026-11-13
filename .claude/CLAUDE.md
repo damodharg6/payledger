@@ -23,5 +23,7 @@ Goal of v1 (ship by 30 Nov 2026): no double charges, no lost money, failed payme
 - Keep v1 a single Spring Boot app. Do not add Kafka, microservices or Kubernetes until v2.
 
 ## Run
-- `docker compose up -d` then run `PayLedgerApplication` (or `mvn spring-boot:run`)
-- Health: http://localhost:8080/actuator/health
+- Everything in Docker: `docker compose up --build -d` → dashboard http://localhost:3000, API http://localhost:8080
+- Develop in IntelliJ: `docker compose up -d postgres` (host port 15432), then run `PayLedgerApplication` with JDK 21 (or `./mvnw spring-boot:run`); dashboard: `npm --prefix dashboard run dev` (http://localhost:5173)
+- Demo data: `scripts/seed-demo.sh`; tests: `./mvnw verify` and `npm --prefix dashboard test`
+- Health: http://localhost:8080/actuator/health · Swagger UI: http://localhost:8080/swagger-ui.html
