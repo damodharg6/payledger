@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.payledger.AbstractIntegrationTest;
 import com.payledger.merchant.ApiKeyAuthenticationFilter;
+import com.payledger.payment.ReversalService;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +34,9 @@ class LedgerIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     LedgerService ledger;
+
+    @Autowired
+    ReversalService reversalService;
 
     @Autowired
     LedgerQueryService queries;
@@ -78,8 +82,7 @@ class LedgerIntegrationTest extends AbstractIntegrationTest {
         assertThat(balance(customerAcc)).isEqualTo(-7_500);
         assertThat(balance(LedgerAccounts.BANK_CLEARING_ID)).isEqualTo(clearingBefore + 7_500);
 
-        // Phase 5's job does this automatically; here we post the reversal directly.
-        tx.executeWithoutResult(s -> ledgerPostings.recordReversal(paymentId, m.id(), "sim_debit_fail-r", 7_500));
+        reversalService.reversePayment(paymentId);  // what the T+1 auto-reversal job does
         assertThat(balance(customerAcc)).isZero();
         assertThat(balance(LedgerAccounts.BANK_CLEARING_ID)).isEqualTo(clearingBefore);
 

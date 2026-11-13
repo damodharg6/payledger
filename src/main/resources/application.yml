@@ -37,6 +37,10 @@ payledger:
     inquiry-after: 30s       # ask the bank again about payments unresolved for this long
     inquiry-interval: 15s    # how often the inquiry job runs
     inquiry-batch-size: 50
+  reversals:
+    interval: 30s            # how often the T+1 auto-reversal job runs
+    initial-delay: 10s
+    batch-size: 100          # most reversals per run; the next run continues
   bank:                      # mock bank / UPI switch (rates must add up to 1)
     success-rate: 0.85
     decline-rate: 0.07
