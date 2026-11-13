@@ -1,6 +1,7 @@
 package com.payledger.bank;
 
 import java.time.Duration;
+import java.util.EnumMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
@@ -52,9 +53,21 @@ public class MockBankClient implements BankClient {
             "sim_timeout_pending", new Plan(BankOutcome.SUCCESS, true, true, false, false),
             "sim_bank_down", new Plan(null, false, false, false, true));
 
+    /**
+     * What the bank has seen so far, for tests and monitoring.
+     *
+     * @param chargeRequests every charge call received, including repeats
+     * @param distinctPayments payments the bank recorded an outcome for
+     * @param slowAnswers charges that answered after the caller's timeout
+     * @param outcomes recorded outcome per payment, counted
+     */
+    public record Stats(long chargeRequests, int distinctPayments, long slowAnswers, Map<BankOutcome, Long> outcomes) {
+    }
+
     private final BankProperties props;
     private final Random random;
     private final Map<UUID, Charge> charges = new ConcurrentHashMap<>();
+    private final Map<UUID, AtomicInteger> chargeRequests = new ConcurrentHashMap<>();
 
     public MockBankClient(BankProperties props) {
         this.props = props;
@@ -63,6 +76,7 @@ public class MockBankClient implements BankClient {
 
     @Override
     public BankResponse charge(BankChargeRequest request) {
+        chargeRequests.computeIfAbsent(request.paymentId(), id -> new AtomicInteger()).incrementAndGet();
         Charge previous = charges.get(request.paymentId());
         if (previous != null) {
             return previous.response();
@@ -99,6 +113,25 @@ public class MockBankClient implements BankClient {
             return BankResponse.pending("Bank still processing");
         }
         return charge.response();
+    }
+
+    /** How many charge requests the bank received for this payment (should never exceed 1). */
+    public int chargeRequestCount(UUID paymentId) {
+        AtomicInteger n = chargeRequests.get(paymentId);
+        return n == null ? 0 : n.get();
+    }
+
+    public Stats stats() {
+        Map<BankOutcome, Long> outcomes = new EnumMap<>(BankOutcome.class);
+        long slow = 0;
+        for (Charge c : charges.values()) {
+            outcomes.merge(c.response().outcome(), 1L, Long::sum);
+            if (c.plan().slow()) {
+                slow++;
+            }
+        }
+        long requests = chargeRequests.values().stream().mapToLong(AtomicInteger::get).sum();
+        return new Stats(requests, charges.size(), slow, outcomes);
     }
 
     static Optional<Plan> scenarioFor(String customerRef) {

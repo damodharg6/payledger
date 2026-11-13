@@ -20,7 +20,8 @@
     <properties>
         <java.version>21</java.version>
         <springdoc.version>3.1.1</springdoc.version>
-        <!-- Empty default so @{argLine} works before JaCoCo (Phase 7) contributes its own agent -->
+        <jacoco.version>0.8.16</jacoco.version>
+        <!-- Empty default for @{argLine}; JaCoCo's prepare-agent adds its coverage agent to it -->
         <argLine></argLine>
     </properties>
 
@@ -126,6 +127,66 @@
                         <goals>
                             <goal>properties</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Code coverage: report in target/site/jacoco/index.html, build fails below the limits -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>${jacoco.version}</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>check</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <!-- Whole application -->
+                                <rule>
+                                    <element>BUNDLE</element>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.80</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                                <!-- Every service, job and flow class on its own -->
+                                <rule>
+                                    <element>CLASS</element>
+                                    <includes>
+                                        <include>com.payledger.*Service</include>
+                                        <include>com.payledger.*Job</include>
+                                        <include>com.payledger.*Processor</include>
+                                        <include>com.payledger.*Transitions</include>
+                                    </includes>
+                                    <limits>
+                                        <limit>
+                                            <counter>LINE</counter>
+                                            <value>COVEREDRATIO</value>
+                                            <minimum>0.70</minimum>
+                                        </limit>
+                                    </limits>
+                                </rule>
+                            </rules>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
