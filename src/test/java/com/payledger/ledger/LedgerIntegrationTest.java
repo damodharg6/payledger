@@ -71,15 +71,15 @@ class LedgerIntegrationTest extends AbstractIntegrationTest {
     @Test
     void failedDebitIsHeldInClearingAndReversalReturnsIt() throws Exception {
         TestMerchant m = newMerchant();
-        UUID paymentId = createPayment(m, 7_500, "cust-r");
         long clearingBefore = balance(LedgerAccounts.BANK_CLEARING_ID);
-
-        tx.executeWithoutResult(s -> ledgerPostings.recordDebitHeldForFailedPayment(paymentId, m.id(), "cust-r", 7_500));
-        UUID customerAcc = ledgerAccounts.customerAccountId(m.id(), "cust-r");
+        // The mock bank debits this customer but fails the payment: the flow parks the money in clearing.
+        UUID paymentId = createPayment(m, 7_500, "sim_debit_fail-r");
+        UUID customerAcc = ledgerAccounts.customerAccountId(m.id(), "sim_debit_fail-r");
         assertThat(balance(customerAcc)).isEqualTo(-7_500);
         assertThat(balance(LedgerAccounts.BANK_CLEARING_ID)).isEqualTo(clearingBefore + 7_500);
 
-        tx.executeWithoutResult(s -> ledgerPostings.recordReversal(paymentId, m.id(), "cust-r", 7_500));
+        // Phase 5's job does this automatically; here we post the reversal directly.
+        tx.executeWithoutResult(s -> ledgerPostings.recordReversal(paymentId, m.id(), "sim_debit_fail-r", 7_500));
         assertThat(balance(customerAcc)).isZero();
         assertThat(balance(LedgerAccounts.BANK_CLEARING_ID)).isEqualTo(clearingBefore);
 

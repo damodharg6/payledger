@@ -101,6 +101,36 @@ class IdempotencyServiceTest {
     }
 
     @Test
+    void duplicateWhilePaymentIsAtTheBankIs409() {
+        when(keys.insertIfAbsent(MERCHANT, KEY, "h1", NOW)).thenReturn(0);
+        when(keys.findById(ID)).thenReturn(Optional.of(new IdempotencyKey(ID, "h1", UUID.randomUUID(), null, NOW.minusSeconds(1))));
+
+        assertThatThrownBy(() -> service.claim(MERCHANT, KEY, "h1"))
+                .isInstanceOf(IdempotencyRequestInProgressException.class);
+    }
+
+    @Test
+    void abandonedKeyWithPaymentIsReplayedNeverRecreated() {
+        UUID paymentId = UUID.randomUUID();
+        when(keys.insertIfAbsent(MERCHANT, KEY, "h1", NOW)).thenReturn(0);
+        when(keys.findById(ID)).thenReturn(Optional.of(
+                new IdempotencyKey(ID, "h1", paymentId, null, NOW.minus(Duration.ofMinutes(10)))));
+
+        IdempotencyService.Claim claim = service.claim(MERCHANT, KEY, "h1");
+
+        assertThat(claim.replay()).isTrue();
+        assertThat(claim.paymentId()).isEqualTo(paymentId);
+        verify(keys, never()).deleteStale(any(), any(), any());
+    }
+
+    @Test
+    void attachFailsLoudlyIfKeyWasNeverClaimed() {
+        UUID paymentId = UUID.randomUUID();
+        when(keys.attachPayment(MERCHANT, KEY, paymentId)).thenReturn(0);
+        assertThatThrownBy(() -> service.attachPayment(MERCHANT, KEY, paymentId)).isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
     void staleTakeoverLostToAnotherRequestIs409() {
         when(keys.insertIfAbsent(MERCHANT, KEY, "h1", NOW)).thenReturn(0);
         when(keys.findById(ID)).thenReturn(Optional.of(new IdempotencyKey(ID, "h1", NOW.minus(Duration.ofMinutes(10)))));

@@ -28,6 +28,13 @@ public interface IdempotencyKeyRepository extends JpaRepository<IdempotencyKey, 
     int insertIfAbsent(@Param("merchantId") UUID merchantId, @Param("key") String key,
                        @Param("requestHash") String requestHash, @Param("now") Instant now);
 
+    /** Links the payment created for this key; the request is still in progress. */
+    @Modifying
+    @Query(value = """
+            UPDATE idempotency_keys SET payment_id = :paymentId
+            WHERE merchant_id = :merchantId AND idempotency_key = :key AND payment_id IS NULL""", nativeQuery = true)
+    int attachPayment(@Param("merchantId") UUID merchantId, @Param("key") String key, @Param("paymentId") UUID paymentId);
+
     /** Records the result, which turns later duplicates into replays. */
     @Modifying
     @Query(value = """

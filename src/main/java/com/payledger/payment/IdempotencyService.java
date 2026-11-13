@@ -19,7 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  * <ol>
  *   <li>{@link #claim}: INSERT the key in its own short transaction and commit at once, so any
  *       duplicate can see it. The PRIMARY KEY guarantees only one request wins.</li>
- *   <li>The winner creates the payment, then {@link #complete} stores the result.</li>
+ *   <li>The winner creates the payment and {@link #attachPayment links} it to the key, talks to
+ *       the bank, then {@link #complete} stores the result.</li>
  *   <li>A duplicate that arrives later gets the stored result (replay); one that arrives while
  *       the winner is still running gets 409; one with a different body gets 422.</li>
  * </ol>
@@ -82,8 +83,17 @@ public class IdempotencyService {
         }
 
         Instant cutoff = now.minus(staleAfter);
-        if (existing.getPaymentId() == null && existing.getCreatedAt().isBefore(cutoff)
-                && keys.deleteStale(merchantId, key, cutoff) == 1
+        boolean stale = existing.getCreatedAt().isBefore(cutoff);
+        if (existing.getPaymentId() != null) {
+            // The payment exists but its request never finished (e.g. the server crashed mid bank call).
+            // Never create a second one: once stale, return the existing payment as it is now.
+            if (stale) {
+                log.warn("Idempotency key {} was never completed; replaying payment {}", key, existing.getPaymentId());
+                return Claim.replayOf(existing.getPaymentId(), PaymentService.CREATED);
+            }
+            throw new IdempotencyRequestInProgressException(key);
+        }
+        if (stale && keys.deleteStale(merchantId, key, cutoff) == 1
                 && keys.insertIfAbsent(merchantId, key, requestHash, now) == 1) {
             log.warn("Took over stale idempotency key {} for merchant {} (claimed at {})",
                     key, merchantId, existing.getCreatedAt());
@@ -92,7 +102,18 @@ public class IdempotencyService {
         throw new IdempotencyRequestInProgressException(key);
     }
 
-    /** Stores the result. Joins the caller's transaction so it commits together with the payment. */
+    /**
+     * Links the new payment to the key. Joins the caller's transaction, so the payment and the
+     * link commit together. The key stays "in progress" (no response code) until {@link #complete}.
+     */
+    @Transactional
+    public void attachPayment(UUID merchantId, String key, UUID paymentId) {
+        if (keys.attachPayment(merchantId, key, paymentId) != 1) {
+            throw new IllegalStateException("Idempotency key " + key + " was not claimed");
+        }
+    }
+
+    /** Stores the final result, which turns later duplicates into replays. */
     @Transactional
     public void complete(UUID merchantId, String key, UUID paymentId, int responseCode) {
         if (keys.complete(merchantId, key, paymentId, responseCode) != 1) {

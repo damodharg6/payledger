@@ -27,3 +27,23 @@ management:
     web:
       exposure:
         include: health,info,metrics
+
+payledger:
+  scheduling:
+    enabled: true
+  idempotency:
+    stale-after: 5m          # a claimed key with no result after this long counts as abandoned
+  payments:
+    inquiry-after: 30s       # ask the bank again about payments unresolved for this long
+    inquiry-interval: 15s    # how often the inquiry job runs
+    inquiry-batch-size: 50
+  bank:                      # mock bank / UPI switch (rates must add up to 1)
+    success-rate: 0.85
+    decline-rate: 0.07
+    debited-failure-rate: 0.03   # "money debited, payment failed"
+    timeout-rate: 0.05
+    min-latency: 50ms
+    max-latency: 300ms
+    timeout: 2s              # PayLedger stops waiting after this and sends a status inquiry
+    slow-response-delay: 3s  # how late a "timeout" charge answers
+    inquiry-pending-rate: 0.10

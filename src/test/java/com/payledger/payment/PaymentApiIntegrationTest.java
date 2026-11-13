@@ -39,16 +39,17 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     JdbcTemplate jdbc;
 
     @Test
-    void createReturns201WithTimeline() throws Exception {
+    void createChargesTheBankAndReturns201WithTimeline() throws Exception {
         TestMerchant m = newMerchant();
         postPayment(m, "key-1", 50_075, "cust-1")
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", startsWith("/api/v1/payments/")))
                 .andExpect(header().doesNotExist(PaymentController.REPLAYED))
-                .andExpect(jsonPath("$.status").value("CREATED"))
+                .andExpect(jsonPath("$.status").value("SUCCEEDED"))
+                .andExpect(jsonPath("$.bankReference").value(startsWith("MOCK-")))
                 .andExpect(jsonPath("$.amountPaise").value(50_075))
                 .andExpect(jsonPath("$.currency").value("INR"))
-                .andExpect(jsonPath("$.timeline[0].to").value("CREATED"));
+                .andExpect(jsonPath("$.timeline[*].to").value(org.hamcrest.Matchers.contains("CREATED", "PROCESSING", "SUCCEEDED")));
     }
 
     @Test
@@ -159,22 +160,21 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void listFiltersByStatusAndDateAndPaginates() throws Exception {
         TestMerchant m = newMerchant();
-        for (int i = 0; i < 3; i++) {
-            postPayment(m, "list-" + i, 100 + i, "c").andExpect(status().isCreated());
-        }
-        // Move one payment to PROCESSING through the state machine, so the status filter has something to find.
-        UUID first = jdbc.queryForObject("SELECT id FROM payments WHERE merchant_id = ? LIMIT 1", UUID.class, m.id());
-        tx.executeWithoutResult(s -> payments.findById(first).orElseThrow().startProcessing(Instant.now()));
+        postPayment(m, "list-0", 100, "c").andExpect(status().isCreated());
+        postPayment(m, "list-1", 101, "c").andExpect(status().isCreated());
+        String declined = JsonPath.read(postPayment(m, "list-2", 102, "sim_decline-1")
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString(), "$.id");
 
         list(m, "?size=2&page=0")
                 .andExpect(jsonPath("$.totalElements").value(3))
                 .andExpect(jsonPath("$.totalPages").value(2))
                 .andExpect(jsonPath("$.content.length()").value(2));
         list(m, "?size=2&page=1").andExpect(jsonPath("$.content.length()").value(1));
-        list(m, "?status=PROCESSING")
+        list(m, "?status=FAILED")
                 .andExpect(jsonPath("$.totalElements").value(1))
-                .andExpect(jsonPath("$.content[0].id").value(first.toString()));
-        list(m, "?status=SUCCEEDED").andExpect(jsonPath("$.totalElements").value(0));
+                .andExpect(jsonPath("$.content[0].id").value(declined));
+        list(m, "?status=SUCCEEDED").andExpect(jsonPath("$.totalElements").value(2));
+        list(m, "?status=PROCESSING").andExpect(jsonPath("$.totalElements").value(0));
 
         Instant hourAgo = Instant.now().minus(1, ChronoUnit.HOURS);
         Instant inAnHour = Instant.now().plus(1, ChronoUnit.HOURS);
@@ -188,16 +188,18 @@ class PaymentApiIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
-    void statusTimelineIsPersisted() throws Exception {
+    void declinedPaymentTimelineIsPersisted() throws Exception {
         TestMerchant m = newMerchant();
-        String id = JsonPath.read(postPayment(m, "t", 100, "c").andReturn().getResponse().getContentAsString(), "$.id");
-        tx.executeWithoutResult(s -> payments.findById(UUID.fromString(id)).orElseThrow().startProcessing(Instant.now()));
+        String id = JsonPath.read(postPayment(m, "t", 100, "sim_decline").andReturn().getResponse().getContentAsString(), "$.id");
 
         mvc.perform(get("/api/v1/payments/" + id).header(ApiKeyAuthenticationFilter.HEADER, m.apiKey()))
-                .andExpect(jsonPath("$.status").value("PROCESSING"))
-                .andExpect(jsonPath("$.timeline.length()").value(2))
+                .andExpect(jsonPath("$.status").value("FAILED"))
+                .andExpect(jsonPath("$.failureReason").value("Declined by issuing bank"))
+                .andExpect(jsonPath("$.reverseBy").doesNotExist())
+                .andExpect(jsonPath("$.timeline.length()").value(3))
                 .andExpect(jsonPath("$.timeline[1].from").value("CREATED"))
-                .andExpect(jsonPath("$.timeline[1].to").value("PROCESSING"));
+                .andExpect(jsonPath("$.timeline[1].to").value("PROCESSING"))
+                .andExpect(jsonPath("$.timeline[2].to").value("FAILED"));
     }
 
     private ResultActions postPayment(TestMerchant m, String key, long amountPaise, String customerRef) throws Exception {

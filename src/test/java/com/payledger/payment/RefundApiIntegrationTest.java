@@ -81,8 +81,8 @@ class RefundApiIntegrationTest extends AbstractIntegrationTest {
     @Test
     void onlySucceededPaymentsCanBeRefunded() throws Exception {
         TestMerchant m = newMerchant();
-        UUID created = createPayment(m, 5_000, "cust-1");
-        refund(m, created, "r", 1_000).andExpect(status().isConflict())
+        UUID declined = createPayment(m, 5_000, "sim_decline");
+        refund(m, declined, "r", 1_000).andExpect(status().isConflict())
                 .andExpect(jsonPath("$.detail").value(org.hamcrest.Matchers.containsString("only SUCCEEDED")));
     }
 
