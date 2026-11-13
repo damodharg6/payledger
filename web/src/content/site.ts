@@ -7,8 +7,7 @@
 
 export const AUTHOR = 'Giddaluru Damodhar (MrDamodar), Agentic AI Engineer';
 
-/** TODO: replace with the real repository URL once the code is pushed to GitHub. */
-export const GITHUB_URL = 'https://github.com/';
+export const GITHUB_URL = 'https://github.com/damodharg6/payledger';
 /** TODO: replace with your LinkedIn profile URL. */
 export const LINKEDIN_URL = 'https://www.linkedin.com/';
 
