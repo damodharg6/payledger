@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: payledger-postgres
+    environment:
+      POSTGRES_DB: payledger
+      POSTGRES_USER: payledger
+      POSTGRES_PASSWORD: payledger
+    ports:
+      - "15432:5432"   # host 15432: local Homebrew Postgres instances already use 5432-5434
+    volumes:
+      - payledger-data:/var/lib/postgresql/data
+
+volumes:
+  payledger-data:
