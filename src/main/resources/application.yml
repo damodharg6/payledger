@@ -1,6 +1,10 @@
 spring:
   application:
     name: payledger
+  autoconfigure:
+    exclude:
+      # No default in-memory user with a generated password: auth is API keys (and JWT in Phase 6)
+      - org.springframework.boot.security.autoconfigure.UserDetailsServiceAutoConfiguration
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:15432/payledger}
     username: ${DB_USERNAME:payledger}
