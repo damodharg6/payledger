@@ -1,6 +1,9 @@
 # PayLedger
 
 [![CI](https://github.com/damodharg6/payledger/actions/workflows/ci.yml/badge.svg)](https://github.com/damodharg6/payledger/actions/workflows/ci.yml)
+[![Website](https://github.com/damodharg6/payledger/actions/workflows/pages.yml/badge.svg)](https://damodharg6.github.io/payledger/)
+
+**Live site:** https://damodharg6.github.io/payledger/ · **API docs:** https://damodharg6.github.io/payledger/developers/
 
 **Every rupee. Accounted for.**
 
@@ -64,7 +67,7 @@ scripts/seed-demo.sh
 
 - **API:** start only the database with `docker compose up -d postgres` (host port 15432), then run `PayLedgerApplication` from your IDE with JDK 21, or `./mvnw spring-boot:run`.
 - **Dashboard:** `npm --prefix dashboard install` then `npm --prefix dashboard run dev` (http://localhost:5173).
-- **Website:** `npm --prefix web install` then `npm --prefix web run dev` (http://localhost:5180).
+- **Website:** `npm --prefix web install` then `npm --prefix web run dev` (http://localhost:5180). Every push to `main` that changes `web/` redeploys the live site through `.github/workflows/pages.yml`.
 - **Tests:** `./mvnw verify` (needs Docker for Testcontainers) and `npm --prefix dashboard test`.
 
 ## A first request
@@ -108,7 +111,7 @@ authenticate with a JWT (passwords stored with BCrypt). Errors are RFC 7807 `app
 - **Tests:** JUnit 5, Mockito, Testcontainers, JaCoCo
 - **Dashboard:** React 19, TypeScript, Vite, Vitest
 - **Website:** React 19, Vite, Tailwind CSS v4, Motion, pre-rendered (Lighthouse 100 on Performance, Accessibility, Best Practices and SEO)
-- **Delivery:** multi-stage Docker images, docker compose, GitHub Actions CI
+- **Delivery:** multi-stage Docker images, docker compose, GitHub Actions CI, website on GitHub Pages
 
 ## Project layout
 
