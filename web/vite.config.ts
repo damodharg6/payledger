@@ -11,6 +11,8 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
+  // "/" locally; "/payledger/" on GitHub Pages (set by the deploy workflow).
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react(), tailwindcss()],
   server: { port: 5180 },
   build: {

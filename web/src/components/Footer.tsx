@@ -1,32 +1,33 @@
 // Footer: Apple-style. 12px grey text on #F5F5F7, four link columns, a hairline, copyright.
 // Author: Giddaluru Damodhar (MrDamodar), Agentic AI Engineer
 import { AUTHOR, GITHUB_URL, LINKEDIN_URL } from '../content/site';
+import { withBase } from '../lib/paths';
 
 const COLUMNS = [
   {
     title: 'Product',
     links: [
-      { label: 'Idempotency', href: '/#idempotency' },
-      { label: 'Payment lifecycle', href: '/#lifecycle' },
-      { label: 'Double-entry ledger', href: '/#ledger' },
-      { label: 'Features', href: '/#features' },
+      { label: 'Idempotency', href: withBase('/#idempotency') },
+      { label: 'Payment lifecycle', href: withBase('/#lifecycle') },
+      { label: 'Double-entry ledger', href: withBase('/#ledger') },
+      { label: 'Features', href: withBase('/#features') },
     ],
   },
   {
     title: 'Developers',
     links: [
-      { label: 'Quickstart', href: '/developers/#quickstart' },
-      { label: 'Authentication', href: '/developers/#authentication' },
-      { label: 'Payments API', href: '/developers/#payments' },
-      { label: 'Errors', href: '/developers/#errors' },
+      { label: 'Quickstart', href: withBase('/developers/#quickstart') },
+      { label: 'Authentication', href: withBase('/developers/#authentication') },
+      { label: 'Payments API', href: withBase('/developers/#payments') },
+      { label: 'Errors', href: withBase('/developers/#errors') },
     ],
   },
   {
     title: 'Project',
     links: [
-      { label: 'Architecture', href: '/#architecture' },
-      { label: 'Roadmap', href: '/#architecture' },
-      { label: 'Builder', href: '/#builder' },
+      { label: 'Architecture', href: withBase('/#architecture') },
+      { label: 'Roadmap', href: withBase('/#architecture') },
+      { label: 'Builder', href: withBase('/#builder') },
     ],
   },
   {

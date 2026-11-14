@@ -5,6 +5,7 @@ import { Menu, X } from '../lib/icons';
 import { useEffect, useId, useState } from 'react';
 import { DOCS_URL, NAV_LINKS } from '../content/site';
 import { PillButton } from './PillButton';
+import { withBase } from '../lib/paths';
 
 export function Nav({ current }: { current?: string }) {
   const [open, setOpen] = useState(false);
@@ -20,7 +21,7 @@ export function Nav({ current }: { current?: string }) {
   return (
     <header className="sticky top-0 z-50 h-nav border-b border-black/[0.08] bg-white/80 backdrop-blur-xl backdrop-saturate-150">
       <nav aria-label="Main" className="mx-auto flex h-full max-w-grid items-center justify-between gap-6 px-gutter">
-        <a href="/" className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
+        <a href={withBase('')} className="text-[17px] font-semibold tracking-[-0.01em] text-ink">
           PayLedger
         </a>
 
